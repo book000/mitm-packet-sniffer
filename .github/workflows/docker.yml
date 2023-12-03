@@ -33,7 +33,8 @@ jobs:
     with:
       targets: >-
         [
-          { imageName: "book000/mitm-packet-sniffer", context: "mitmproxy-addon", file: "mitmproxy-addon/Dockerfile", packageName: "mitm-packet-sniffer" }
+          { imageName: "book000/mitm-packet-sniffer", context: "mitmproxy-addon", file: "mitmproxy-addon/Dockerfile", packageName: "mitm-packet-sniffer" },
+          { imageName: "book000/mitm-packet-sniffer-generate-types", context: "generate-types", file: "generate-types/Dockerfile", packageName: "mitm-packet-sniffer-generate-types" }
         ]
       platforms: linux/amd64
     secrets:

@@ -8,6 +8,9 @@
     },
     {
       "path": "mitmproxy-addon"
+    },
+    {
+      "path": "generate-types"
     }
   ]
 }

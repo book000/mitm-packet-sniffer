@@ -1,0 +1,48 @@
+{
+  "name": "mitm-packet-sniffer-generate-types",
+  "version": "0.0.0",
+  "description": "",
+  "homepage": "https://github.com/mitm-packet-sniffer",
+  "bugs": {
+    "url": "https://github.com/mitm-packet-sniffer/issues"
+  },
+  "license": "MIT",
+  "author": "Tomachi <tomachi@tomacheese.com>",
+  "private": true,
+  "main": "dist/main.js",
+  "repository": {
+    "url": "git@github.com:mitm-packet-sniffer.git",
+    "type": "git"
+  },
+  "scripts": {
+    "lint:prettier": "prettier --check src",
+    "lint": "run-z lint:prettier,lint:eslint,lint:tsc",
+    "dev": "tsx watch ./src/main.ts",
+    "lint:tsc": "tsc",
+    "fix:eslint": "eslint . --ext ts,tsx --fix",
+    "lint:eslint": "eslint . --ext ts,tsx",
+    "fix:prettier": "prettier --write src",
+    "fix": "run-z fix:prettier fix:eslint",
+    "start": "tsx ./src/main.ts"
+  },
+  "devDependencies": {
+    "@book000/node-utils": "1.11.6",
+    "@types/node": "20.10.2",
+    "@typescript-eslint/eslint-plugin": "6.13.1",
+    "@typescript-eslint/parser": "6.13.1",
+    "eslint": "8.55.0",
+    "eslint-config-prettier": "9.1.0",
+    "eslint-config-standard": "17.1.0",
+    "eslint-plugin-import": "2.29.0",
+    "eslint-plugin-n": "16.3.1",
+    "eslint-plugin-promise": "6.1.1",
+    "eslint-plugin-unicorn": "49.0.0",
+    "genson-js": "0.0.8",
+    "json-schema-to-typescript": "13.1.1",
+    "prettier": "3.1.0",
+    "run-z": "2.0.0",
+    "tsx": "4.6.2",
+    "typescript": "5.3.2"
+  },
+  "packageManager": "pnpm@8.10.5"
+}
