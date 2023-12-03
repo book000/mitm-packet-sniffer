@@ -1,0 +1,18 @@
+services:
+  schema-import:
+    build: ./database/
+    command: import
+    environment:
+      DB_HOST: mysql
+      DB_USER: mitm-packet-sniffer
+      DB_PASSWORD: mitm-packet-sniffer-password
+      DB_NAME: mitm-packet-sniffer
+    volumes:
+      - ./database/schema:/schema
+    networks:
+      - default
+
+networks:
+  default:
+    name: mitm-packet-sniffer
+    external: true

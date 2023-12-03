@@ -1,0 +1,13 @@
+services:
+  schema-export:
+    build: ./database/
+    command: export
+    environment:
+      DB_HOST: mysql
+      DB_USER: mitm-packet-sniffer
+      DB_PASSWORD: mitm-packet-sniffer-password
+      DB_NAME: mitm-packet-sniffer
+    volumes:
+      - ./database/schema:/schema
+    networks:
+      - default

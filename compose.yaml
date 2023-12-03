@@ -1,0 +1,33 @@
+services:
+  mysql:
+    image: mysql:8.2.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootPassword
+      MYSQL_DATABASE: mitm-packet-sniffer
+      MYSQL_USER: mitm-packet-sniffer
+      MYSQL_PASSWORD: mitm-packet-sniffer-password
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./database/schema/:/docker-entrypoint-initdb.d/:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootPassword"]
+      interval: 30s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  mitmproxy:
+    build: ./mitmproxy-addon/
+    environment:
+      DB_HOST: mysql
+      DB_USER: mitm-packet-sniffer
+      DB_PASSWORD: mitm-packet-sniffer-password
+      DB_NAME: mitm-packet-sniffer
+    volumes:
+      - ./data:/data
+    ports:
+      - 10000:8080
+    depends_on:
+      mysql:
+        condition: service_healthy
+    init: true
