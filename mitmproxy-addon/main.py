@@ -8,6 +8,7 @@ from xml.etree import ElementTree
 
 from mitmproxy import ctx, http, tls
 from mitmproxy.utils import human
+from mitmproxy.script import concurrent
 from mysql import connector
 
 
