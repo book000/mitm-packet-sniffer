@@ -169,9 +169,11 @@ atexit.register(exit_handler)
 
 # ---- mitmproxy ハンドラー ----
 
+@concurrent
 def response(flow: http.HTTPFlow):
   db.insert_response(flow)
 
+@concurrent
 def tls_clienthello(data: tls.ClientHelloData):
     if data.client_hello.sni:
         dest = data.client_hello.sni
@@ -181,6 +183,7 @@ def tls_clienthello(data: tls.ClientHelloData):
     if db.is_ignore_hosts(dest):
         data.ignore_connection = True
 
+@concurrent
 def tls_established_client(data: tls.TlsData):
     if data.conn.sni:
         dest = data.conn.sni
@@ -189,6 +192,7 @@ def tls_established_client(data: tls.TlsData):
 
     db.delete_ignore_host(dest)
 
+@concurrent
 def tls_failed_client(data: tls.TlsData):
     if data.conn.sni:
         dest = data.conn.sni
