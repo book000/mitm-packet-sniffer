@@ -33,7 +33,7 @@ jobs:
     with:
       targets: >-
         [
-          { imageName: "book000/mitm-packet-sniffer", context: "mitmproxy-addon", file: "Dockerfile", packageName: "mitm-packet-sniffer" }
+          { imageName: "book000/mitm-packet-sniffer", context: ".", file: "mitmproxy-addon/Dockerfile", packageName: "mitm-packet-sniffer" }
         ]
       # registry: registry.hub.docker.com # default: ghcr.io
       # platforms: linux/amd64 # default: linux/amd64,linux/arm64
