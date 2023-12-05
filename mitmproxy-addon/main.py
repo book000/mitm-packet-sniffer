@@ -1,3 +1,4 @@
+import asyncio
 import atexit
 import base64
 import datetime
@@ -6,27 +7,30 @@ import json
 import os
 from xml.etree import ElementTree
 
+import aiomysql
 from mitmproxy import ctx, http, tls
+from mitmproxy.script import concurrent
 from mitmproxy.utils import human
-from mysql import connector
 
 
 class Database:
-    def __init__(self):
-        self.connection = connector.connect(
+    async def connect(self):
+        self.pool = await aiomysql.create_pool(
             host=os.environ['DB_HOST'],
             port=os.environ['DB_PORT'] if 'DB_PORT' in os.environ else 3306,
             user=os.environ['DB_USER'],
             password=os.environ['DB_PASSWORD'],
-            database=os.environ['DB_NAME']
+            db=os.environ['DB_NAME'],
+            autocommit=True
         )
 
-        if not self.connection.is_connected():
-            raise Exception('Database connection failed')
+        if self.pool is None:
+            raise Exception('Failed to connect to database')
 
-        self.cursor = self.connection.cursor()
+    def is_connected(self):
+        return self.pool is not None
 
-    def insert_response(self, flow: http.HTTPFlow):
+    async def insert_response(self, flow: http.HTTPFlow):
         sql = "INSERT INTO `responses` (`host`, `port`, `method`, `scheme`, `authority`, `path`, `path_hash`, `query`, `request_content`, `request_content_type`, `http_version`, `request_headers`, `status_code`, `response_headers`, `response_content`, `response_content_type`) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 
         host = flow.request.host
@@ -53,13 +57,11 @@ class Database:
         if content_type == 'BINARY':
             content = self.to_base64(content)
 
-        self.cursor.execute(sql, (host, port, method, scheme, authority, path, path_hash, query, request_content, request_content_type, http_version, request_headers, status_code, response_headers, content, content_type))
-        self.connection.commit()
+        await self.execute(sql, (host, port, method, scheme, authority, path, path_hash, query, request_content, request_content_type, http_version, request_headers, status_code, response_headers, content, content_type))
 
-    def is_ignore_hosts(self, address: str):
+    async def is_ignore_hosts(self, address: str):
         sql = "SELECT `last_seen_at`, `next_check_phase` FROM `ignore_hosts` WHERE `address` = %s"
-        self.cursor.execute(sql, (address,))
-        row = self.cursor.fetchone()
+        row = await self.fetchone(sql, (address,))
 
         # レコードが存在しない場合はFalse
         if row is None:
@@ -68,19 +70,34 @@ class Database:
         # レコードが存在する場合は、is_next_check メソッドの結果によって判定
         return not self.is_next_check(row[0], row[1])
 
-    def upsert_ignore_host(self, address: str):
+    async def upsert_ignore_host(self, address: str):
         sql = "INSERT INTO `ignore_hosts` (`address`, `last_seen_at`) VALUES (%s, NOW()) ON DUPLICATE KEY UPDATE `last_seen_at` = NOW(), `next_check_phase` = `next_check_phase` + 1"
-        self.cursor.execute(sql, (address,))
-        self.connection.commit()
+        await self.execute(sql, (address,))
 
-    def delete_ignore_host(self, address: str):
+    async def delete_ignore_host(self, address: str):
         sql = "DELETE FROM `ignore_hosts` WHERE `address` = %s"
 
         try:
-          self.cursor.execute(sql, (address,))
-          self.connection.commit()
+            await self.execute(sql, (address,))
         except:
           pass
+
+    async def execute(self, sql: str, params: tuple):
+        if self.pool is None:
+            await self.connect()
+
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(sql, params)
+
+    async def fetchone(self, sql: str, params: tuple):
+        if self.pool is None:
+            await self.connect()
+
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(sql, params)
+                return await cur.fetchone()
 
     def is_next_check(self, last_seen_at: datetime.datetime, next_check_phase: int):
         # 1回目: 1分後
@@ -156,45 +173,52 @@ class Database:
         return base64.b64encode(content).decode('utf-8')
 
     def close(self):
-        self.cursor.close()
-        self.connection.close()
+        self.pool.close()
 
-db = Database()
+class Addon:
+    def __init__(self):
+        self.loop = asyncio.get_event_loop()
+        self.db = Database()
 
-# Ctrl+C で終了した場合にDB接続を閉じる
-def exit_handler():
-  db.close()
+    async def running(self):
+        await self.db.connect()
 
-atexit.register(exit_handler)
+        atexit.register(self.done)
 
-# ---- mitmproxy ハンドラー ----
+    def done(self):
+        if self.db is None or not self.db.is_connected():
+            return
+        self.db.close()
 
-def response(flow: http.HTTPFlow):
-  db.insert_response(flow)
+    @concurrent
+    async def response(self, flow: http.HTTPFlow):
+        self.loop.create_task(self.db.insert_response(flow))
 
-def tls_clienthello(data: tls.ClientHelloData):
-    if data.client_hello.sni:
-        dest = data.client_hello.sni
-    else:
-        dest = human.format_address(data.context.server.address)
+    async def tls_clienthello(self, data: tls.ClientHelloData):
+        if data.client_hello.sni:
+            dest = data.client_hello.sni
+        else:
+            dest = human.format_address(data.context.server.address)
 
-    if db.is_ignore_hosts(dest):
-        data.ignore_connection = True
+        if await self.db.is_ignore_hosts(dest):
+            data.ignore_connection = True
 
-def tls_established_client(data: tls.TlsData):
-    if data.conn.sni:
-        dest = data.conn.sni
-    else:
-        dest = human.format_address(data.context.server.address)
+    async def tls_established_client(self, data: tls.TlsData):
+        if data.conn.sni:
+            dest = data.conn.sni
+        else:
+            dest = human.format_address(data.context.server.address)
 
-    db.delete_ignore_host(dest)
+        self.loop.create_task(self.db.upsert_ignore_host(dest))
 
-def tls_failed_client(data: tls.TlsData):
-    if data.conn.sni:
-        dest = data.conn.sni
-    else:
-        dest = human.format_address(data.context.server.address)
+    async def tls_failed_client(self, data: tls.TlsData):
+        if data.conn.sni:
+            dest = data.conn.sni
+        else:
+            dest = human.format_address(data.context.server.address)
 
-    ctx.log.warn(data.conn.error)
+        ctx.log.warn(data.conn.error)
 
-    db.upsert_ignore_host(dest)
+        self.loop.create_task(self.db.delete_ignore_host(dest))
+
+addons = [Addon()]
