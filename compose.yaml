@@ -11,7 +11,7 @@ services:
       - ./database/schema/:/docker-entrypoint-initdb.d/:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootPassword"]
-      interval: 30s
+      interval: 10s
       timeout: 5s
       retries: 6
       start_period: 30s
@@ -31,3 +31,17 @@ services:
       mysql:
         condition: service_healthy
     init: true
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5.0.2
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: mitm-packet-sniffer
+      PMA_PASSWORD: mitm-packet-sniffer-password
+    ports:
+      - 8080:80
+    depends_on:
+      - mysql
+    networks:
+      - default
