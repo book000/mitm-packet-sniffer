@@ -9,7 +9,6 @@ from xml.etree import ElementTree
 
 import aiomysql
 from mitmproxy import ctx, http, tls
-from mitmproxy.script import concurrent
 from mitmproxy.utils import human
 
 
@@ -38,7 +37,10 @@ class Database:
         method = flow.request.method
         scheme = flow.request.scheme
         authority = flow.request.authority
+        # flow.request.path はクエリパラメータを含むため、パスのみを取得する
         path = flow.request.path
+        if '?' in path:
+            path = path[:path.index('?')]
         path_hash = self.get_md5hash(path)
         query = json.dumps(dict(flow.request.query))
         raw_request_headers = flow.request.headers
@@ -193,7 +195,6 @@ class Addon:
             return
         self.db.close()
 
-    @concurrent
     async def response(self, flow: http.HTTPFlow):
         self.loop.create_task(self.db.insert_response(flow))
 
