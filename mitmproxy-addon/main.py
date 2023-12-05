@@ -134,7 +134,10 @@ class Database:
     def get_md5hash(self, string):
         return hashlib.md5(string.encode('utf-8')).hexdigest()
 
-    def get_contenttype(self, content: bytes):
+    def get_contenttype(self, content: bytes | None):
+        if content is None:
+            return 'NULL'
+
         if self.is_binary(content):
             return 'BINARY'
 
