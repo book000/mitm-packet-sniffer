@@ -1,4 +1,4 @@
-FROM mitmproxy/mitmproxy:10.2.1
+FROM mitmproxy/mitmproxy:10.2.2
 
 WORKDIR /app
 
