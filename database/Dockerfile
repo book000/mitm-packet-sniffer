@@ -1,4 +1,4 @@
-FROM alpine:3.19 as runner
+FROM alpine:3.20 as runner
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
