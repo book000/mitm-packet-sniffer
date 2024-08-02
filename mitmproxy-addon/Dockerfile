@@ -14,4 +14,3 @@ COPY main.py /app/main.py
 ENV TZ=Asia/Tokyo
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-
