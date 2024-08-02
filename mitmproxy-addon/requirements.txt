@@ -1,2 +1,2 @@
-mitmproxy==10.4.1
+mitmproxy==10.4.2
 aiomysql==0.2.0
