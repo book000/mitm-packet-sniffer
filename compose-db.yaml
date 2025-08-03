@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:9.3.0
+    image: mysql:9.4.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: rootPassword
