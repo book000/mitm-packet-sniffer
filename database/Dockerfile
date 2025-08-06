@@ -3,7 +3,7 @@ FROM alpine:3.22 AS runner
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 # renovate: datasource=github-releases depName=sqldef/sqldef
-ENV SQLDEF_VERSION=v2.0.7
+ENV SQLDEF_VERSION=v2.0.8
 
 # hadolint ignore=DL3018
 RUN apk add --no-cache curl && \
