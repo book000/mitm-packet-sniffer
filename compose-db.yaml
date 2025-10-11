@@ -13,7 +13,7 @@ services:
       - default
 
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin:5.2.2
+    image: phpmyadmin/phpmyadmin:5.2.3
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
