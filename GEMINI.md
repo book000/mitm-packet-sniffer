@@ -15,6 +15,15 @@
 - 日本語と英数字の間には半角スペースを入れる。
 
 ## プロジェクト概要
+MITM (Man-in-the-Middle) proxy addon using mitmproxy to capture and log network packets to a database.
+
+### 技術スタック
+- **言語**: Python
+- **フレームワーク**: mitmproxy
+- **パッケージマネージャー**: pip
+- **主要な依存関係**:
+  - aiomysql
+  - mitmproxy
 
 ## コーディング規約
 - フォーマット: 既存設定（ESLint / Prettier / formatter）に従う。
@@ -22,9 +31,23 @@
 - コメント言語: 日本語
 - エラーメッセージ: 英語
 
-## 開発コマンド
+### 開発コマンド
 ```bash
-# README を確認してください
+# install
+Docker Compose: docker-compose up
+
+# dev
+python with mitmproxy
+
+# build
+docker-compose build
+
+# test
+None specified
+
+# lint
+None specified
+
 ```
 
 ## 注意事項
@@ -33,3 +56,9 @@
 - 既存のプロジェクトルールがある場合はそれを優先する。
 
 ## リポジトリ固有
+- **docker_support**: True
+- **database**: MySQL
+- **async_processing**: aiomysql for async database operations
+- **network_capture**: Intercepts HTTP/HTTPS traffic via mitmproxy addon interface
+- **xml_processing**: ElementTree for XML parsing from packets
+- **configuration**: Environment variables (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME)

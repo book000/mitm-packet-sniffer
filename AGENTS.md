@@ -25,3 +25,9 @@
 - ログに機密情報を出力しない。
 
 ## リポジトリ固有
+- **docker_support**: True
+- **database**: MySQL
+- **async_processing**: aiomysql for async database operations
+- **network_capture**: Intercepts HTTP/HTTPS traffic via mitmproxy addon interface
+- **xml_processing**: ElementTree for XML parsing from packets
+- **configuration**: Environment variables (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME)
