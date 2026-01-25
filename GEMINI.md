@@ -89,7 +89,7 @@ docker compose -f compose-export.yaml up
 docker compose -f compose-import.yaml up
 
 # mitmproxy 起動（コンテナ内）
-mitmdump -s /app/main.py --set confdir=/data/mitmproxy-conf/ --set tls_version_client_min=SSL3
+mitmdump -s /app/main.py --set confdir=/data/mitmproxy-conf/ --set tls_version_client_min=TLS1_2
 
 # Python 依存関係のインストール（開発時）
 pip install -r mitmproxy-addon/requirements.txt
@@ -133,7 +133,7 @@ pip install -r mitmproxy-addon/requirements.txt
 
 - **mitmproxy のバージョン**: 12.2.1 に固定されており、最新バージョンとは API が異なる可能性がある
 - **MySQL のバージョン**: 9.5.0 を使用しており、古いバージョンとは互換性がない可能性がある
-- **TLS バージョン**: `tls_version_client_min=SSL3` により、古い SSL/TLS 接続もサポート
+- **TLS バージョン**: 本番環境では `tls_version_client_min=TLS1_2` 以上のみを許可し、古い SSL/TLS プロトコルは利用しない（レガシー互換が必要な場合は限定的なテスト環境などに切り出す）
 
 ## リポジトリ固有
 
