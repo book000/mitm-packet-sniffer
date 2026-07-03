@@ -88,3 +88,46 @@ jobs:
     secrets:
       DOCKER_USERNAME: ${{ github.actor }}
       DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  smoke-test:
+    name: Smoke test
+    needs: approval-gate
+    if: always() && needs.approval-gate.result == 'success' && (github.event.action != 'closed' || github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Start stack
+        run: docker compose up -d
+
+      - name: Wait for containers to stabilize
+        run: sleep 60
+
+      - name: Check mitmproxy container state
+        run: |
+          state=$(docker inspect --format='{{json .State}}' "$(docker compose ps -q mitmproxy)")
+          echo "State: $state"
+          running=$(echo "$state" | jq -r '.Running')
+          restart_count=$(docker inspect --format='{{.RestartCount}}' "$(docker compose ps -q mitmproxy)")
+          echo "RestartCount: $restart_count"
+          if [ "$running" != "true" ]; then
+            echo "::error::mitmproxy container is not running"
+            exit 1
+          fi
+          if [ "$restart_count" -gt 0 ]; then
+            echo "::error::mitmproxy container has restarted $restart_count time(s), indicating a crash loop"
+            exit 1
+          fi
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs mitmproxy
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v
