@@ -78,9 +78,7 @@ jobs:
     name: Docker CI
     needs: approval-gate
     if: always() && needs.approval-gate.result == 'success' && (github.event.action != 'closed' || github.event.pull_request.merged == true)
-    # book000/templates#430（fix/allow-unsafe-pr-checkout-input, 未マージ）を暫定的に参照している。
-    # マージ後は master の SHA に更新すること。
-    uses: book000/templates/.github/workflows/reusable-docker.yml@0ae8b523900db5d32e3c2c2c2f1d286901c8e54a # fix/allow-unsafe-pr-checkout-input
+    uses: book000/templates/.github/workflows/reusable-docker.yml@1d3c112ba6b8e5ac13c24a8e3892f92b98ea35ac # master
     with:
       targets: >-
         [
