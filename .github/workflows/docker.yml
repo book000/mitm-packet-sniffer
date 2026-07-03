@@ -11,8 +11,6 @@ on:
     types:
       - opened
       - synchronize
-    paths:
-      - .github/workflows/docker.yml
   pull_request_target:
     branches:
       - main
@@ -77,7 +75,36 @@ jobs:
   docker-ci:
     name: Docker CI
     needs: approval-gate
-    if: always() && needs.approval-gate.result == 'success' && (github.event.action != 'closed' || github.event.pull_request.merged == true)
+    # pull_request_target はフォーク PR の head SHA をチェックアウトできない
+    # （GitHub のセキュリティ制約により actions/checkout が拒否するため）。
+    # フォーク PR かつ未マージの場合は、下の docker-ci-fork-preview（権限が
+    # 絞られた安全な pull_request トリガー側）にビルド検証を委ね、
+    # このジョブはスキップする。
+    if: >-
+      always() &&
+      needs.approval-gate.result == 'success' &&
+      github.event_name == 'pull_request_target' &&
+      (github.event.action != 'closed' || github.event.pull_request.merged == true) &&
+      !(github.event.pull_request.head.repo.full_name != github.repository && github.event.pull_request.merged != true)
+    uses: book000/templates/.github/workflows/reusable-docker.yml@249109e57d1bc836c5a4e1bbf4e446ad2c286deb # master
+    with:
+      targets: >-
+        [
+          { imageName: "book000/mitm-packet-sniffer", context: "mitmproxy-addon", file: "mitmproxy-addon/Dockerfile", packageName: "mitm-packet-sniffer" }
+        ]
+      platforms: linux/amd64,linux/arm64
+    secrets:
+      DOCKER_USERNAME: ${{ github.actor }}
+      DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-ci-fork-preview:
+    name: Docker CI
+    # フォーク PR は pull_request_target 側でビルド検証できないため、
+    # 権限が絞られた安全な pull_request トリガーでビルド検証のみ行う
+    # （is-merged は常に false になるため、レジストリへの push は発生しない）
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
     uses: book000/templates/.github/workflows/reusable-docker.yml@249109e57d1bc836c5a4e1bbf4e446ad2c286deb # master
     with:
       targets: >-
