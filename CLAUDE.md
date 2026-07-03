@@ -128,7 +128,7 @@ docker compose -f compose-export.yaml up
 docker compose -f compose-import.yaml up
 
 # mitmproxy 起動（コンテナ内）
-mitmdump -s /app/main.py --set confdir=/data/mitmproxy-conf/ --set tls_version_client_min=TLS1_2
+mitmdump -s /app/main.py --set confdir=/data/mitmproxy-conf/
 
 # Python 依存関係のインストール（開発時）
 pip install -r mitmproxy-addon/requirements.txt
