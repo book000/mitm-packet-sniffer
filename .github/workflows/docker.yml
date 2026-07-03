@@ -78,13 +78,18 @@ jobs:
     name: Docker CI
     needs: approval-gate
     if: always() && needs.approval-gate.result == 'success' && (github.event.action != 'closed' || github.event.pull_request.merged == true)
-    uses: book000/templates/.github/workflows/reusable-docker.yml@76e83535fd3f9ddc99c9333efb8a4f7dd886edd1 # master
+    uses: book000/templates/.github/workflows/reusable-docker.yml@1d3c112ba6b8e5ac13c24a8e3892f92b98ea35ac # master
     with:
       targets: >-
         [
           { imageName: "book000/mitm-packet-sniffer", context: "mitmproxy-addon", file: "mitmproxy-addon/Dockerfile", packageName: "mitm-packet-sniffer" }
         ]
       platforms: linux/amd64,linux/arm64
+      # pull_request_target 上のフォーク PR は、actions/checkout のセキュリティ制約により
+      # デフォルトでは head SHA をチェックアウトできない。フォーク PR は上の approval-gate で
+      # Environment（fork-pr-build）の手動承認を既に必須にしているため、承認済みの場合に限り
+      # チェックアウトを許可する。
+      allow-unsafe-pr-checkout: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository }}
     secrets:
       DOCKER_USERNAME: ${{ github.actor }}
       DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
