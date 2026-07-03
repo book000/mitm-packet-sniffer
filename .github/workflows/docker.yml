@@ -110,10 +110,16 @@ jobs:
 
       - name: Check mitmproxy container state
         run: |
-          state=$(docker inspect --format='{{json .State}}' "$(docker compose ps -q mitmproxy)")
+          container_id=$(docker compose ps -q mitmproxy)
+          if [ -z "$container_id" ]; then
+            echo "::error::mitmproxy container was not created (docker compose ps -q returned empty)"
+            docker compose ps
+            exit 1
+          fi
+          state=$(docker inspect --format='{{json .State}}' "$container_id")
           echo "State: $state"
           running=$(echo "$state" | jq -r '.Running')
-          restart_count=$(docker inspect --format='{{.RestartCount}}' "$(docker compose ps -q mitmproxy)")
+          restart_count=$(docker inspect --format='{{.RestartCount}}' "$container_id")
           echo "RestartCount: $restart_count"
           if [ "$running" != "true" ]; then
             echo "::error::mitmproxy container is not running"
