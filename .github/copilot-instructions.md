@@ -1,124 +1,44 @@
 # GitHub Copilot Instructions
 
+GitHub Copilot によるコードレビュー用の指示。レビュー時に重点確認すべき点と、フラグすべきでない既知パターンを示す。
+
 ## プロジェクト概要
 
-- **目的**: mitmproxy を使用して HTTP パケットをスニッフィングし、MySQL データベースに保存するツール
-- **主な機能**:
-  - mitmproxy アドオンで HTTP リクエスト / レスポンスを傍受
-  - MySQL データベースにパケットデータを保存
-  - `ignore_hosts` テーブルで重複接続を段階的に抑制
-  - コンテンツタイプの自動判別（Binary/JSON/XML/Text）
-  - phpMyAdmin によるデータベース管理
-- **対象ユーザー**: 開発者、ネットワーク解析を行うユーザー
-
-## 共通ルール
-
-- 会話は日本語で行う。
-- PR とコミットは [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) に従う。
-  - `<type>(<scope>): <description>` 形式
-  - `<description>` は日本語で記載
-  - 例: `feat: HTTP レスポンスキャプチャ機能を追加`
-- 日本語と英数字の間には半角スペースを入れる。
-- ブランチ命名は [Conventional Branch](https://conventional-branch.github.io) に従う（`feat/`, `fix/` など）。
+mitmproxy アドオンで HTTP リクエスト / レスポンスを傍受し、MySQL に保存するツール。`ignore_hosts` テーブルで TLS 接続失敗ホストの再チェック間隔を段階的に延長し、重複接続を抑制する。phpMyAdmin で DB を管理する。
 
 ## 技術スタック
 
-- **言語**: Python 3.x, Bash
-- **主要ライブラリ**:
-  - mitmproxy 12.2.1
-  - aiomysql 0.3.2
-- **データベース**: MySQL 9.5.0
-- **環境**: Docker Compose
-- **管理ツール**: phpMyAdmin 5.2.3
-- **CI/CD**: GitHub Actions（Docker イメージビルド）
-- **依存関係管理**: Renovate
+- 言語: Python 3.x, Bash（Alpine 環境は `ash`）
+- 主要ライブラリ: mitmproxy 12.2.3 / aiomysql 0.3.2
+- データベース: MySQL 9.7.1、スキーマ管理は sqldef（mysqldef）
+- 環境: Docker Compose、phpMyAdmin 5.2.3
+- CI/CD: GitHub Actions（`book000/templates` の再利用ワークフローで Docker イメージをビルド）
 
-## コーディング規約
+## レビューで重点確認する点
 
-- **Python**:
-  - PEP 8 に従う
-  - 関数とクラスには docstring を日本語で記載する
-  - エラーメッセージは英語で記載する
-  - 型ヒントを可能な限り使用する
-  - async/await を適切に使用する
-- **Bash**:
-  - シェバン (`#!/bin/bash`) を必ず記載する
-  - エラーハンドリングを適切に行う
-- **Docker**:
-  - マルチステージビルドを活用する
-  - 不要なレイヤーを削減する
-  - セキュリティベストプラクティスに従う
+- **非同期 DB 操作**: DB アクセスは `aiomysql` による `async`/`await` で行うこと。同期的な DB 呼び出しの混入を指摘する。
+- **SQL の組み立て**: ユーザー由来の値（傍受した HTTP の host/path/query 等）を SQL に渡す箇所は、文字列連結ではなくプレースホルダでパラメータ化されていること。
+- **機密情報のログ出力**: 傍受した HTTP ボディやヘッダには個人情報・認証情報が含まれ得る。これらをログへ出力していないこと。
+- **例外処理**: `except: pass` による握りつぶしは最小限であること。握りつぶす場合は理由が妥当か確認する。
+- **型ヒントと docstring**: 関数・クラスに型ヒント（可能な限り）と日本語 docstring（PEP 257 準拠）があること。
+- **コンテンツタイプ判別**: バイナリは Base64 エンコードして保存する前提。判別ロジック（Binary/JSON/XML/Text）の変更時は保存形式との整合を確認する。
 
-## 開発コマンド
+## コーディング規約（レビュー基準）
 
-```bash
-# サービス起動
-docker compose up
+- Python は PEP 8 準拠。コメント・docstring は日本語、エラーメッセージは英語。
+- 日本語と英数字の間には半角スペースを入れる。
+- エラーメッセージの先頭に絵文字を付ける既存慣習がある。周辺のエラーメッセージが絵文字付きなら、追加分も内容に即した一文字の絵文字を付けて統一する。
+- コミットは [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)（`<description>` は日本語）、ブランチは [Conventional Branch](https://conventional-branch.github.io) 短縮形（`feat/`, `fix/` 等）。
 
-# サービス停止
-docker compose down
+## フラグすべきでない既知パターン
 
-# コンテナビルド
-docker compose build
+- `compose*.yaml` にハードコードされた DB 認証情報は開発用のデフォルトであり意図的。本番は環境変数で上書きする前提。
+- `mitmproxy-addon/entrypoint.sh` で `tls_version_client_min` を明示指定していないのは意図的（明示指定すると OpenSSL ビルドによっては mitmproxy が起動時クラッシュするため）。「TLS 最小バージョン未設定」を欠陥として指摘しない。
+- 同 `entrypoint.sh` の異常終了時 30 秒 `sleep` は、ホストへの再起動連打を避けるための意図的な待機。
+- Renovate が作成した PR には追加コミットを行わない運用のため、依存バージョン更新の指摘は不要。
 
-# データベースのみ起動
-docker compose -f compose-db.yaml up
+## セキュリティ
 
-# データのエクスポート
-docker compose -f compose-export.yaml up
-
-# データのインポート
-docker compose -f compose-import.yaml up
-
-# mitmproxy 起動（コンテナ内）
-mitmdump -s /app/main.py --set confdir=/data/mitmproxy-conf/
-
-# Python 依存関係のインストール（開発時）
-pip install -r mitmproxy-addon/requirements.txt
-```
-
-## テスト方針
-
-- 現時点ではテストフレームワークは導入されていない
-- テストを追加する場合は pytest を使用することを推奨
-- mitmproxy アドオンの動作確認は実際の HTTP トラフィックで検証する
-- データベース操作は phpMyAdmin で確認する
-
-## セキュリティ / 機密情報
-
-- データベース認証情報は環境変数で管理し、Git にコミットしない。
-- ログに個人情報や認証情報を出力しない。
-- パスワードやトークンは `.env` ファイルで管理し、`.gitignore` に追加する。
-- mitmproxy の証明書ファイル（`data/mitmproxy-conf/`）は Git にコミットしない。
-
-## ドキュメント更新
-
-コードを変更した際は、必要に応じて以下のドキュメントを更新する：
-
-- `README.md`: 新機能の追加、使用方法の変更
-- `database/schema/mitm-packet-sniffer.sql`: データベーススキーマの変更
-- Docker ファイルのコメント: ビルドプロセスの変更
-- この `copilot-instructions.md`: 開発フローやルールの変更
-
-## リポジトリ固有
-
-- **mitmproxy アドオンの構成**:
-  - `Database` クラス: MySQL データベース操作を管理
-  - `Addon` クラス: mitmproxy のフックを実装
-  - `ignore_hosts` テーブル: TLS 接続失敗時の再試行を段階的に制御（1分→5分→30分...）
-- **データベーススキーマ**:
-  - `responses` テーブル: HTTP リクエスト / レスポンスを保存
-  - `ignore_hosts` テーブル: 無視するホストを管理
-- **Docker Compose 構成**:
-  - `mysql`: MySQL 9.5.0 サーバー
-  - `mitmproxy`: mitmproxy アドオンを実行
-  - `phpmyadmin`: データベース管理 UI
-- **ポート設定**:
-  - `10000`: mitmproxy プロキシポート
-  - `8080`: phpMyAdmin UI
-- **Renovate による自動依存関係更新**:
-  - Renovate PR には追加コミットや更新を行わない
-- **CI/CD**:
-  - PR 作成・更新時に Docker イメージをビルド
-  - `book000/templates/.github/workflows/reusable-docker.yml` を使用
-  - linux/amd64 と linux/arm64 のマルチアーキテクチャビルド
+- DB 認証情報・トークンをコミットしない（開発用デフォルトを除く）。
+- mitmproxy の証明書は `data/mitmproxy-conf/` に置かれ `.gitignore` 済み。証明書や鍵をリポジトリに追加しない。
+- 傍受データ・ログに個人情報や認証情報を残さない。

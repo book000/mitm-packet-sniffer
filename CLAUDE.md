@@ -12,7 +12,6 @@
 2. **検討した代替案**: 他にどのような選択肢があったか
 3. **採用しなかった案とその理由**: なぜその案を選ばなかったか
 4. **前提条件・仮定・不確実性**: 判断の前提となる条件や不確実な要素
-5. **他エージェントによるレビュー可否**: Codex CLI や Gemini CLI でレビュー可能か
 
 **重要**: 前提・仮定・不確実性を明示し、仮定を事実のように扱わない。
 
@@ -74,37 +73,6 @@
 
 - Python では可能な限り型ヒントを使用する
 - `from typing import ...` で必要な型をインポートする
-
-## 相談ルール
-
-### Codex CLI（ask-codex）への相談
-
-以下の場合に Codex CLI に相談する：
-
-- 実装コードに対するソースコードレビュー
-- 関数設計、モジュール内部の実装方針などの局所的な技術判断
-- アーキテクチャ、モジュール間契約、パフォーマンス / セキュリティといった全体影響の判断
-- 実装の正当性確認、機械的ミスの検出、既存コードとの整合性確認
-
-### Gemini CLI（ask-gemini）への相談
-
-以下の場合に Gemini CLI に相談する：
-
-- SaaS 仕様、言語・ランタイムのバージョン差、料金・制限・クォータといった、最新の適切な情報が必要な外部依存の判断
-- 外部一次情報の確認、最新仕様の調査、外部前提条件の検証
-
-### 他エージェントの指摘への対応
-
-他エージェントが指摘・異議を提示した場合、Claude Code は必ず以下のいずれかを行う。黙殺・無言での不採用は禁止する。
-
-- 指摘を受け入れ、判断を修正する
-- 指摘を退け、その理由を明示する
-
-### 相談時の注意事項
-
-- 他エージェントの提案を鵜呑みにせず、その根拠や理由を理解する
-- 自身の分析結果と他エージェントの意見が異なる場合は、双方の視点を比較検討する
-- 最終的な判断は、両者の意見を総合的に評価した上で、自身で下す
 
 ## 開発コマンド
 
@@ -215,9 +183,7 @@ pip install -r mitmproxy-addon/requirements.txt
 - `README.md`: 新機能の追加、使用方法の変更
 - `database/schema/mitm-packet-sniffer.sql`: データベーススキーマの変更
 - `CLAUDE.md`（このファイル）: 開発フローやルールの変更
-- `.github/copilot-instructions.md`: 開発ルールの変更
-- `AGENTS.md`: 基本方針の変更
-- `GEMINI.md`: コンテキストの変更
+- `.github/copilot-instructions.md`: コードレビュー観点の変更
 
 ### 更新タイミング
 
@@ -300,6 +266,12 @@ pip install -r mitmproxy-addon/requirements.txt
 - `book000/templates/.github/workflows/reusable-docker.yml` を使用
 - Docker イメージをビルドし、GitHub Container Registry に公開
 - linux/amd64 と linux/arm64 のマルチアーキテクチャビルド
+- フォーク PR は Environment `fork-pr-build` の手動承認を経てからビルドする
+- `smoke-test` ジョブが `docker compose up` でスタックを起動し、mitmproxy コンテナがクラッシュループしていないことを確認する
+
+### 既知の制約
+
+- TLS 最小バージョンは mitmproxy のデフォルト設定に委ねる。`tls_version_client_min` を明示指定すると、実行環境の OpenSSL ビルドによっては起動時にクラッシュする mitmproxy 側の不具合があるため、`entrypoint.sh` では明示指定しない。レガシー互換が必要な場合は限定的なテスト環境などに切り出す
 
 ### セキュリティ
 
