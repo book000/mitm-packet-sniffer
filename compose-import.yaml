@@ -11,8 +11,3 @@ services:
       - ./database/schema:/schema
     networks:
       - default
-
-networks:
-  default:
-    name: mitm-packet-sniffer
-    external: true

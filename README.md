@@ -84,7 +84,7 @@ docker compose -f compose-import.yaml up
 docker compose -f compose-import.yaml run --rm schema-import import-dry-run
 ```
 
-Export joins the default network of this Compose project, so it works while `compose.yaml` or `compose-db.yaml` is running. Import expects an existing external Docker network named `mitm-packet-sniffer` with the database reachable on it as host `mysql`, which Compose does not create for you (the project network is `mitm-packet-sniffer_default`).
+Export and import both join the default network of this Compose project, so they work while `compose.yaml` or `compose-db.yaml` is running and the database is reachable as host `mysql`.
 
 ## Development
 
