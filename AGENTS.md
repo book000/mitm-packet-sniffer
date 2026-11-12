@@ -28,7 +28,7 @@ There is no test suite, linter or build script. CI (`.github/workflows/docker.ym
 
 - `mitmproxy-addon/`: `main.py` (`Database` and `Addon` classes), `entrypoint.sh` (runs `mitmdump -s /app/main.py --set confdir=/data/mitmproxy-conf/`), `Dockerfile`, `requirements.txt`. Connection settings come from `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` and optional `DB_PORT`.
 - `database/`: `schema/mitm-packet-sniffer.sql` (source of truth for the schema; also mounted into the MySQL init directory by `compose.yaml`) and a `mysqldef` (sqldef) wrapper image used by the export/import compose files.
-- `compose*.yaml`: see Commands. `run.sh` is an unused stub.
+- `compose*.yaml`: see Commands.
 
 ## Conventions
 

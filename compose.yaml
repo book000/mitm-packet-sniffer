@@ -10,7 +10,7 @@ services:
       - ./mysql:/var/lib/mysql
       - ./database/schema/:/docker-entrypoint-initdb.d/:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootPassword"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-prootPassword"]
       interval: 10s
       timeout: 5s
       retries: 6

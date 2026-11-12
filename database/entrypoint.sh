@@ -7,7 +7,7 @@ MODE=$1
 # Export the database
 export_db() {
   # Remove the old schema file
-  rm -f "/schema/*.sql"
+  rm -f /schema/*.sql
 
   # Export the database to a file
   mysqldef -h "$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" --export > "/schema/$DB_NAME.sql"
