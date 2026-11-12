@@ -62,7 +62,7 @@ class Database:
         await self.execute(sql, (host, port, method, scheme, authority, path, path_hash, query, request_content, request_content_type, http_version, request_headers, status_code, response_headers, content, content_type))
 
     async def is_ignore_hosts(self, address: str):
-        sql = "SELECT `last_seen_at`, `next_check_phase` FROM `ignore_hosts` WHERE `address` = %s"
+        sql = "SELECT UNIX_TIMESTAMP(`last_seen_at`), `next_check_phase`, UNIX_TIMESTAMP() FROM `ignore_hosts` WHERE `address` = %s"
         row = await self.fetchone(sql, (address,))
 
         # No record: the host is not ignored
@@ -70,7 +70,7 @@ class Database:
             return False
 
         # Record exists: the host stays ignored until is_next_check says its re-check time has come
-        return not self.is_next_check(row[0], row[1])
+        return not self.is_next_check(row[0], row[1], row[2])
 
     async def upsert_ignore_host(self, address: str):
         sql = "INSERT INTO `ignore_hosts` (`address`, `last_seen_at`) VALUES (%s, NOW()) ON DUPLICATE KEY UPDATE `last_seen_at` = NOW(), `next_check_phase` = `next_check_phase` + 1"
@@ -101,7 +101,12 @@ class Database:
                 await cur.execute(sql, params)
                 return await cur.fetchone()
 
-    def is_next_check(self, last_seen_at: datetime.datetime, next_check_phase: int):
+    def is_next_check(self, last_seen_at: int, next_check_phase: int, now: int) -> bool:
+        """Return True when the re-check interval for next_check_phase has elapsed.
+
+        last_seen_at and now are epoch seconds read from MySQL in the same query,
+        so the result does not depend on any time zone or on the container clock.
+        """
         # Re-check interval per next_check_phase (1 = 1 minute ... 9 = 48 hours).
         # Phases beyond 9 never expire, so the host stays ignored indefinitely.
         timedeltas = {
@@ -119,8 +124,7 @@ class Database:
         if next_check_phase not in timedeltas:
             return False
 
-        next_check_at = last_seen_at + timedeltas[next_check_phase]
-        now = datetime.datetime.now()
+        next_check_at = last_seen_at + timedeltas[next_check_phase].total_seconds()
 
         return next_check_at < now
 
