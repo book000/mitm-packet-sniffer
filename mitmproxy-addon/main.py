@@ -42,9 +42,8 @@ class Database:
         if '?' in path:
             path = path[:path.index('?')]
         path_hash = self.get_md5hash(path)
-        query = json.dumps(dict(flow.request.query))
-        raw_request_headers = flow.request.headers
-        request_headers = json.dumps(dict(raw_request_headers))
+        query = json.dumps(list(flow.request.query.items(multi=True)))
+        request_headers = json.dumps(list(flow.request.headers.items(multi=True)))
         request_content = flow.request.get_content()
         request_content_type = self.get_contenttype(request_content)
         if request_content_type == 'BINARY':
@@ -52,8 +51,7 @@ class Database:
         http_version = flow.request.http_version
 
         status_code = flow.response.status_code
-        raw_response_headers = flow.response.headers
-        response_headers = json.dumps(dict(raw_response_headers))
+        response_headers = json.dumps(list(flow.response.headers.items(multi=True)))
         content = flow.response.get_content()
         content_type = self.get_contenttype(content)
         if content_type == 'BINARY':
