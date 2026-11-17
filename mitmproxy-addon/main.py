@@ -50,18 +50,12 @@ class Database:
         path_hash = self.get_md5hash(path)
         query = json.dumps(list(flow.request.query.items(multi=True)))
         request_headers = json.dumps(list(flow.request.headers.items(multi=True)))
-        request_content = flow.request.get_content()
-        request_content_type = self.get_contenttype(request_content)
-        if request_content_type == 'BINARY':
-            request_content = self.to_base64(request_content)
+        request_content, request_content_type = self.get_stored_content(flow.request)
         http_version = flow.request.http_version
 
         status_code = flow.response.status_code
         response_headers = json.dumps(list(flow.response.headers.items(multi=True)))
-        content = flow.response.get_content()
-        content_type = self.get_contenttype(content)
-        if content_type == 'BINARY':
-            content = self.to_base64(content)
+        content, content_type = self.get_stored_content(flow.response)
 
         await self.execute(sql, (host, port, method, scheme, authority, path, path_hash, query, request_content, request_content_type, http_version, request_headers, status_code, response_headers, content, content_type))
 
@@ -132,6 +126,17 @@ class Database:
 
     def get_md5hash(self, string):
         return hashlib.md5(string.encode('utf-8')).hexdigest()
+
+    def get_stored_content(self, message: http.Message):
+        try:
+            content = message.get_content()
+        except ValueError:
+            return self.to_base64(message.raw_content), 'DECODE_ERR'
+
+        content_type = self.get_contenttype(content)
+        if content_type == 'BINARY':
+            content = self.to_base64(content)
+        return content, content_type
 
     def get_contenttype(self, content: bytes | None):
         if content is None:
