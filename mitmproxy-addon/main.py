@@ -1,15 +1,18 @@
 import asyncio
-import atexit
 import base64
 import datetime
 import hashlib
 import json
+import logging
 import os
 from xml.etree import ElementTree
 
 import aiomysql
 from mitmproxy import ctx, http, tls
 from mitmproxy.utils import human
+
+
+logger = logging.getLogger(__name__)
 
 
 class Database:
@@ -80,10 +83,7 @@ class Database:
     async def delete_ignore_host(self, address: str):
         sql = "DELETE FROM `ignore_hosts` WHERE `address` = %s"
 
-        try:
-            await self.execute(sql, (address,))
-        except:
-          pass
+        await self.execute(sql, (address,))
 
     async def execute(self, sql: str, params: tuple):
         if self.pool is None:
@@ -174,28 +174,51 @@ class Database:
     def to_base64(self, content: bytes):
         return base64.b64encode(content).decode('utf-8')
 
-    def close(self):
-        if self.pool is None:
-            return
-        self.pool.close()
+    async def close(self):
+        if self.pool is not None:
+            self.pool.close()
+            await self.pool.wait_closed()
 
 class Addon:
     def __init__(self):
-        self.loop = asyncio.get_event_loop()
         self.db = Database()
+        self.write_slots = asyncio.Semaphore(10)
+        self.writes = {}
+        self.stopping = False
 
     async def running(self):
         await self.db.connect()
 
-        atexit.register(self.done)
-
-    def done(self):
-        if self.db is None or not self.db.is_connected():
+    async def write(self, operation, *args):
+        if self.stopping:
+            logger.warning('Database write skipped during shutdown')
             return
-        self.db.close()
+        task = asyncio.current_task()
+        finished = asyncio.get_running_loop().create_future()
+        self.writes[finished] = task
+        try:
+            async with self.write_slots:
+                await operation(*args)
+        except Exception:
+            logger.error('Database write failed')
+        finally:
+            self.writes.pop(finished)
+            finished.set_result(None)
+
+    async def done(self):
+        self.stopping = True
+        if self.writes:
+            _, pending = await asyncio.wait(self.writes, timeout=5)
+            if pending:
+                logger.warning('Cancelling %d database writes after shutdown timeout', len(pending))
+                tasks = [self.writes[finished] for finished in pending]
+                for task in tasks:
+                    task.cancel()
+                await asyncio.gather(*pending)
+        await self.db.close()
 
     async def response(self, flow: http.HTTPFlow):
-        self.loop.create_task(self.db.insert_response(flow))
+        await self.write(self.db.insert_response, flow)
 
     async def tls_clienthello(self, data: tls.ClientHelloData):
         if data.client_hello.sni:
@@ -212,7 +235,7 @@ class Addon:
         else:
             dest = human.format_address(data.context.server.address)
 
-        self.loop.create_task(self.db.upsert_ignore_host(dest))
+        await self.write(self.db.upsert_ignore_host, dest)
 
     async def tls_failed_client(self, data: tls.TlsData):
         if data.conn.sni:
@@ -222,6 +245,6 @@ class Addon:
 
         ctx.log.warn(data.conn.error)
 
-        self.loop.create_task(self.db.delete_ignore_host(dest))
+        await self.write(self.db.delete_ignore_host, dest)
 
 addons = [Addon()]
