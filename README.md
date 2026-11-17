@@ -41,7 +41,7 @@ Once a client uses the proxy, each response is stored as one row in the `respons
 `responses` has one row per HTTP response, with the request side (`host`, `port`, `method`, `scheme`, `authority`, `path`, `query`, `request_headers`, `request_content`, `http_version`) and the response side (`status_code`, `response_headers`, `response_content`), plus `created_at`. Details:
 
 - `path` has the query string removed; `path_hash` is the MD5 of `path`. `query`, `request_headers`, and `response_headers` are JSON arrays of `[name, value]` pairs in their original order, preserving repeated names (for example, `[["a", "1"], ["a", "2"]]`). Empty collections are represented by `[]`. Rows recorded before this change contain JSON objects instead.
-- `request_content` / `response_content` are the decoded bodies. `*_content_type` classifies each body as `BINARY` (not valid UTF-8, stored Base64-encoded), `JSON`, `XML`, `TEXT`, or `NULL` (no content available).
+- `request_content` / `response_content` are the decoded bodies. `*_content_type` classifies each body as `BINARY` (not valid UTF-8, stored Base64-encoded), `JSON`, `XML`, `TEXT`, or `NULL` (no content available). If Content-Encoding decoding fails, the raw body is stored Base64-encoded with type `DECODE_ERR`; the original headers retain the encoding information.
 - Database writes apply backpressure to proxy hooks. At shutdown, pending writes have 5 seconds to finish before they are cancelled and the database pool is closed; failed or cancelled writes are logged without traffic contents.
 
 ### Host ignore list
